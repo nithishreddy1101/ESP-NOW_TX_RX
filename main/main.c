@@ -5,11 +5,11 @@
 #include "string.h"
 #include "nvs_flash.h"
 #include "esp_now.h"
-static const char* TAG = "ESP-NOW TX";
-void esp_now_send_callback(const uint8_t *mac_addr, esp_now_send_status_t status)
+uint8_t esp_mac[6];
+static const char* TAG = "ESP-NOW RX";
+void esp_now_recv_callback(const esp_now_recv_info_t * esp_now_info, const uint8_t *data, int data_len)
 {
- 
-   ESP_LOGI(TAG,"tx cb");
+ ESP_LOGI(TAG,"received data : %.*s", data_len, data);
 }
 void wifi_sta_init(void)
 {
@@ -28,28 +28,19 @@ void wifi_sta_init(void)
   esp_wifi_set_ps(WIFI_PS_NONE);
   esp_wifi_start();
   esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
-  uint8_t my_esp_mac[6] = {0x40,0x4c,0xca,0x54,0x3d,0xf0};
-  esp_read_mac(my_esp_mac, ESP_MAC_WIFI_STA);
-  ESP_LOGI(TAG, "peer mac " MACSTR "", my_esp_mac[0], my_esp_mac[1], my_esp_mac[2], my_esp_mac[3], my_esp_mac[4], my_esp_mac[5]);
+
+  esp_read_mac(esp_mac, ESP_MAC_WIFI_STA);
+  ESP_LOGI(TAG, "peer mac " MACSTR "", esp_mac[0], esp_mac[1], esp_mac[2], esp_mac[3], esp_mac[4], esp_mac[5]);
 }
 void app_main(void)
 {
-    wifi_sta_init();
-
+  wifi_sta_init();
   esp_now_init();
-  esp_now_register_send_cb(esp_now_send_callback);
-  esp_now_peer_info_t peer_info = {0};
-  peer_info.channel = 1; 
-  peer_info.encrypt = false;
-  uint8_t esp_mac[6] = {0x40,0x4c,0xca,0x54,0x3d,0xf0};
-
-  memcpy(peer_info.peer_addr, esp_mac, 6);
-  esp_now_add_peer(&peer_info);
+  esp_now_register_recv_cb(esp_now_recv_callback);
+  
   while(1)
   {
-    esp_err_t err = esp_now_send(esp_mac, (uint8_t *) "Sending via ESP-NOW", strlen("Sending via ESP-NOW"));
-        ESP_LOGI(TAG,"esp now status : %s", esp_err_to_name(err));
-
+  
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
